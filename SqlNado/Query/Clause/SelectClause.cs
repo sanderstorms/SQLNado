@@ -34,12 +34,18 @@ namespace SqlNado.Query.Clause
             {
                 if (item is MethodCallExpression)
                 {
-                    var method = ((MethodCallExpression)item).Method;
-                    var argument = ((MemberExpression)((MethodCallExpression)item).Arguments.First());
-
+                    var method    = ((MethodCallExpression)item).Method;
+                    var argument  = ((MemberExpression)((MethodCallExpression)item).Arguments.First());
+                    var name      = argument.Member.Name;
                     var columnMap = Attribute.GetCustomAttribute(selector.Parameters[0].Type.GetProperty(argument.Member.Name), typeof(SQLiteColumnAttribute));
 
-                    var name = columnMap != null ? ((SQLiteColumnAttribute)columnMap).Name : argument.Member.Name;
+                    if (columnMap is SQLiteColumnAttribute attr)
+                    {
+                        if (attr.Name != null)
+                        {
+                            name = attr.Name;
+                        }
+                    }
 
                     object[] _stringMethodParams = new object[] { name };
                     var invokeName = method.Invoke(null, _stringMethodParams).ToString();
@@ -50,9 +56,16 @@ namespace SqlNado.Query.Clause
                 else if (item is MemberExpression)
                 {
                     var x = ((MemberExpression)item).Member;
+                    var name = x.Name;
                     var columnMap = Attribute.GetCustomAttribute(selector.Parameters[0].Type.GetProperty(x.Name), typeof(SQLiteColumnAttribute));
 
-                    var name = columnMap != null ? ((SQLiteColumnAttribute)columnMap).Name : x.Name;
+                    if (columnMap is SQLiteColumnAttribute attr)
+                    {
+                        if (attr.Name != null)
+                        {
+                            name = attr.Name;
+                        }
+                    }
 
                     properyName.Add(name);
                 }
@@ -70,7 +83,7 @@ namespace SqlNado.Query.Clause
             {
                 var columnMap = item.GetCustomAttribute<SQLiteColumnAttribute>();
 
-                var name = columnMap != null ? (columnMap).Name : item.Name;
+                var name = columnMap?.Name ?? item.Name;
 
                 properyName.Add(name);
             }
