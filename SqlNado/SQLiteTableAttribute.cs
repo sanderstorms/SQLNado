@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq.Expressions;
 
 namespace SqlNado
 {
@@ -14,5 +15,26 @@ namespace SqlNado
         public bool WithoutRowId { get; set; }
 
         public override string? ToString() => Name;
+
+        public static string ColumnName<T>(Expression<Func<T>> e)
+        {
+            object instance;
+
+            if (e.Body is MemberExpression member)
+            {
+                if (member.Expression is ConstantExpression constant)
+                {
+                    var attributes = member.Member.GetCustomAttributes(typeof(SQLiteTableAttribute), true);
+
+                    if (attributes.Length > 0)
+                    {
+                        var column = (SQLiteTableAttribute)attributes[0];
+                        return (column.Name);
+                    }
+                }
+            }
+            return (string.Empty);
+        }
+
     }
 }

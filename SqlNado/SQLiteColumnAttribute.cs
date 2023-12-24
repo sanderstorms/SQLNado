@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace SqlNado
 {
@@ -69,5 +70,26 @@ namespace SqlNado
 
             return _sortOrder.Value.CompareTo(other._sortOrder.Value);
         }
+
+        public static string ColumnName<T>(Expression<Func<T>> e)
+        {
+            object instance;
+
+            if (e.Body is MemberExpression member)
+            {
+                if (member.Expression is ConstantExpression constant)
+                {
+                    var attributes = member.Member.GetCustomAttributes(typeof(SQLiteColumnAttribute), true);
+
+                    if (attributes.Length > 0)
+                    {
+                        var column = (SQLiteColumnAttribute)attributes[0];
+                        return (column.Name);
+                    }
+                }
+            }
+            return (string.Empty);
+        }
+
     }
 }
