@@ -41,6 +41,10 @@ namespace SqlNado.Query.Clause
 
                     if (columnMap is SQLiteColumnAttribute attr)
                     {
+                        if (attr.Ignore)
+                        {
+                            continue;
+                        }
                         if (attr.Name != null)
                         {
                             name = attr.Name;
@@ -61,6 +65,10 @@ namespace SqlNado.Query.Clause
 
                     if (columnMap is SQLiteColumnAttribute attr)
                     {
+                        if (attr.Ignore)
+                        {
+                            continue;
+                        }
                         if (attr.Name != null)
                         {
                             name = attr.Name;
@@ -83,6 +91,10 @@ namespace SqlNado.Query.Clause
             {
                 var columnMap = item.GetCustomAttribute<SQLiteColumnAttribute>();
 
+                if (columnMap.Ignore)
+                {
+                    continue;
+                }
                 var name = columnMap?.Name ?? item.Name;
 
                 properyName.Add(name);
