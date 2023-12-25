@@ -91,7 +91,7 @@ namespace SqlNado.Query.Clause
             {
                 var columnMap = item.GetCustomAttribute<SQLiteColumnAttribute>();
 
-                if (columnMap.Ignore)
+                if (columnMap?.Ignore == true)
                 {
                     continue;
                 }
