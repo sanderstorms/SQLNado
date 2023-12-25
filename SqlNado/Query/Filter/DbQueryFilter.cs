@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 
 namespace SqlNado.Query.Filter
 {
     public class DbQueryFilter : ExpressionVisitor
     {
+        private Stack<string> _fieldNames = new Stack<string>();
         private readonly Dictionary<ExpressionType, string> _logicalOperators;
 
         private readonly Dictionary<Type, Func<object, string>> _typeConverters;
@@ -49,7 +51,16 @@ namespace SqlNado.Query.Filter
 
             if (node.Object.NodeType == ExpressionType.MemberAccess)
             {
-                name = ((MemberExpression)(node.Object)).Member.Name;
+                var memberInfo = ((MemberExpression)(node.Object)).Member;
+                var columnMap = memberInfo.GetCustomAttribute<SQLiteColumnAttribute>();
+                if (columnMap?.Ignore == false)
+                {
+                    name = columnMap.Name;
+                }
+                else
+                {
+                    name = memberInfo.Name;
+                }
             }
 
             switch (node.Method.Name.ToLower())
@@ -105,7 +116,24 @@ namespace SqlNado.Query.Filter
 
         protected override Expression VisitMember(MemberExpression node)
         {
-            _queryStringBuilder.Append(node.Member.Name);
+            if (node.Expression.NodeType == ExpressionType.Constant ||
+                node.Expression.NodeType == ExpressionType.MemberAccess)
+            {
+                _fieldNames.Push(node.Member.Name);
+                 Visit(node.Expression);
+            }
+            else
+            {
+                var columnMap = node.Member.GetCustomAttribute<SQLiteColumnAttribute>();
+                if (columnMap?.Ignore == false)
+                {
+                    _queryStringBuilder.Append(columnMap.Name);
+                }
+                else
+                {
+                    _queryStringBuilder.Append(node.Member.Name);
+                }
+            }
 
             return node;
         }
@@ -120,12 +148,30 @@ namespace SqlNado.Query.Filter
         private string GetValue(object input)
         {
             var type = input.GetType();
-
-            if (_typeConverters.ContainsKey(type))
-                return _typeConverters[type](input);
+            //if it is not simple value
+            if (type.IsClass && type != typeof(string))
+            {
+                //proper order of selected names provided by means of Stack structure
+                var fieldName = _fieldNames.Pop();
+                var fieldInfo = type.GetField(fieldName);
+                object value;
+                if (fieldInfo != null)
+                    //get instance of order    
+                    value = fieldInfo.GetValue(input);
+                else
+                    //get value of "Customer" property on order
+                    value = type.GetProperty(fieldName).GetValue(input);
+                return GetValue(value);
+            }
             else
-                return input.ToString();
-
+            {
+                //our predefined _typeConverters
+                if (_typeConverters.ContainsKey(type))
+                    return _typeConverters[type](input);
+                else
+                    //rest types
+                    return input.ToString();
+            }
         }
     }
 
