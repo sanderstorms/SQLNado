@@ -151,9 +151,12 @@ namespace SqlNado.Query.Filter
             //if it is not simple value
             if (type.IsClass && type != typeof(string))
             {
-                //proper order of selected names provided by means of Stack structure
                 var fieldName = _fieldNames.Pop();
-                var fieldInfo = type.GetField(fieldName);
+
+                var fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                var fieldInfo = fields.FirstOrDefault(field => field.Name == fieldName);
+                //proper order of selected names provided by means of Stack structure
+                //var fieldInfo = type.GetField(fieldName);
                 object value;
                 if (fieldInfo != null)
                     //get instance of order    
