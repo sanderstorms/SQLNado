@@ -9,7 +9,9 @@ namespace SqlNado.Query.Filter
 {
     public class DbQueryFilter : ExpressionVisitor
     {
-        private Stack<string> _fieldNames = new Stack<string>();
+        private          bool                               _isParameter;
+        private          object                             _parameterValue;
+        private          Stack<string>                      _fieldNames = new Stack<string>();
         private readonly Dictionary<ExpressionType, string> _logicalOperators;
 
         private readonly Dictionary<Type, Func<object, string>> _typeConverters;
@@ -42,11 +44,28 @@ namespace SqlNado.Query.Filter
 
         }
 
+        public override Expression? Visit(Expression? node)
+        {
+            return (base.Visit(node));
+        }
+
+
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
-            var argument = node.Arguments.FirstOrDefault();
+            string value = null;
+            var    argument = node.Arguments.FirstOrDefault();
 
-            var value = argument?.ToString();
+            if (argument?.NodeType == ExpressionType.MemberAccess)
+            {
+                _isParameter = true;
+                Visit(argument);
+                value = _parameterValue.ToString();
+                value = value.Replace("'", "");
+            }
+            else
+            {
+                value = argument?.ToString();
+            }
             string name = string.Empty;
 
             if (node.Object.NodeType == ExpressionType.MemberAccess)
@@ -66,13 +85,13 @@ namespace SqlNado.Query.Filter
             switch (node.Method.Name.ToLower())
             {
                 case "startswith":
-                    _queryStringBuilder.Append($"( {name} like N'{value.Replace("\"", "")}%' )");
+                    _queryStringBuilder.Append($"( {name} like '{value.Replace("\"", "")}%' )");
                     break;
                 case "endswith":
-                    _queryStringBuilder.Append($"( {name} like N'%{value.Replace("\"", "")}' )");
+                    _queryStringBuilder.Append($"( {name} like '%{value.Replace("\"", "")}' )");
                     break;
                 case "contains":
-                    _queryStringBuilder.Append($"( {name} like N'%{value.Replace("\"", "")}%' )");
+                    _queryStringBuilder.Append($"( {name} like '%{value.Replace("\"", "")}%' )");
                     break;
                 case "tolower":
                     _queryStringBuilder.Append($"{node.Object.ToString().ToLower()}");
@@ -84,7 +103,12 @@ namespace SqlNado.Query.Filter
                     break;
             }
 
-            return node;
+            if (_isParameter)
+            {
+                _isParameter = false;
+                return node;
+            }
+            return base.VisitMethodCall(node);
         }
 
 
@@ -140,12 +164,24 @@ namespace SqlNado.Query.Filter
 
         protected override Expression VisitConstant(ConstantExpression node)
         {
-            _queryStringBuilder.Append(GetValue(node.Value));
+            var value = GetValue(node.Value);
+            if (value is MemberInfo)
+            {
+                value = GetValue(node);
+            }
 
+            if (_isParameter)
+            {
+                _parameterValue = value;
+            }
+            else
+            {
+                _queryStringBuilder.Append(value);
+            }
             return node;
         }
 
-        private string GetValue(object input)
+        private object GetValue(object input)
         {
             var type = input.GetType();
             //if it is not simple value
@@ -173,8 +209,23 @@ namespace SqlNado.Query.Filter
                     return _typeConverters[type](input);
                 else
                     //rest types
-                    return input.ToString();
+                    return input;
             }
+        }
+
+        public static object GetValue(MemberInfo member, object instance)
+        {
+            if (member is FieldInfo fieldInfo)
+            {
+                return fieldInfo.GetValue(instance);
+            }
+
+            if (member is PropertyInfo propertyInfo)
+            {
+                return propertyInfo.GetValue(instance, null);
+            }
+
+            return (null);
         }
     }
 
