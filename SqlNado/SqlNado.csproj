@@ -37,6 +37,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Reference Include="Microsoft.CSharp">
+	    <HintPath>..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.7.2\Microsoft.CSharp.dll</HintPath>
+	  </Reference>
+	</ItemGroup>
+
+	<ItemGroup>
 		<None Update="sqlite3.x64.dll">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
