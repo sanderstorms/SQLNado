@@ -55,6 +55,11 @@ namespace SqlNado.Query.Filter
             string value = null;
             var    argument = node.Arguments.FirstOrDefault();
 
+            if (argument == null)
+            {
+	            return base.VisitMethodCall(node);
+            }
+
             if (argument?.NodeType == ExpressionType.MemberAccess)
             {
                 _isParameter = true;
